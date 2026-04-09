@@ -12,17 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Configuration
 import Foundation
+import Logging
 
-public enum Service: String {
-    case localhost, auroradb
-    
-    func getHost() -> String {
-        switch self {
-        case .localhost:
-            return "localhost"
-        case .auroradb:
-            return "aurora.db.bluemix.net"
-        }
+public enum Service {
+  case localhost(database: String = "neo4j")
+  case aura(database: String)
+
+  var url: String {
+    switch self {
+    case .localhost(let database):
+      Logger(label: "SwiftCypherClient").info("The url set: \("http://localhost:7474/db/\(database)/query/v2")")
+      return "http://localhost:7474/db/\(database)/query/v2"
+    case .aura(let database):
+      Logger(label: "SwiftCypherClient").info("The url set: \("https://\(database).databases.neo4j.io/db/\(database)/query/v2")")
+      return "https://\(database).databases.neo4j.io/db/\(database)/query/v2"
     }
+  }
 }
