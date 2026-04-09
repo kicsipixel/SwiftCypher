@@ -33,6 +33,7 @@ Or via Xcode: **File → Add Package Dependencies** and paste the repository URL
 ## Quick Start
 
 ```swift
+import Configuration
 import SwiftCypher
 
 // Credentials come from environment variables or a .env file using Swift Configuration
