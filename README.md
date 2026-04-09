@@ -35,7 +35,7 @@ Or via Xcode: **File → Add Package Dependencies** and paste the repository URL
 ```swift
 import SwiftCypher
 
-// Credentials come from environment variables or a .env file
+// Credentials come from environment variables or a .env file using Swift Configuration
 let username = reader.string(forKey: "USERNAME") ?? "neo4j"
 let password = reader.string(forKey: "PASSWORD") ?? "neo4j"
 
