@@ -5,5 +5,7 @@ xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.swiftpm/xcode/package.xcworkspace/xcshareddata/
+!.swiftpm/xcode/package.xcworkspace/xcshareddata/IDETemplateMacros.plist
 .netrc
 .env
