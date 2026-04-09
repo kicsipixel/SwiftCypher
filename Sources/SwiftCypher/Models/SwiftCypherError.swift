@@ -15,20 +15,29 @@
 import Foundation
 
 public enum SwiftCypherError: Error {
+  case invalidHTTPResponse
   case invalidURL
-  case missingDatabaseName(key: String)
+  case jsonDecodingError
   case missingCredentials
+  case missingDatabaseName(key: String)
+  case unsuccessfulRequest
 }
 
 extension SwiftCypherError: LocalizedError {
   public var errorDescription: String? {
     switch self {
+    case .invalidHTTPResponse:
+      return "Invalid HTTP response."
     case .invalidURL:
       return "Invalid URL. Please check it again."
-    case .missingDatabaseName(let key):
-      return "Missing database name. Set the '\(key)' environment variable."
+    case .jsonDecodingError:
+      return "JSON decoding error."
     case .missingCredentials:
       return "Missing credentials. Set the 'USERNAME/NEO4J_USER' and 'PASSWORD/NEO4J_PASSWORD' environment variables."
+    case .missingDatabaseName(let key):
+      return "Missing database name. Set the '\(key)' environment variable."
+    case .unsuccessfulRequest:
+      return "Unsuccessful request."
     }
   }
 }
