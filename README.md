@@ -22,7 +22,7 @@ A lightweight, idiomatic Swift wrapper for the [Neo4j Query API](https://neo4j.c
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/SwiftCypher", from: "0.0.1")
+    .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.0.1")
 ]
 ```
 

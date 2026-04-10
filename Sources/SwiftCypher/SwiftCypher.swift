@@ -15,7 +15,7 @@
 import Foundation
 import Logging
 
-public struct SwiftCypherClient {
+public struct SwiftCypherClient: Sendable {
   let hostURL: String
   let username: String
   let password: String
