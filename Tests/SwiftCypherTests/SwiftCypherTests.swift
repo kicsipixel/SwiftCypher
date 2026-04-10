@@ -54,7 +54,7 @@ struct SwiftCypherTests {
 
   // MARK: - Aurora/Remote database connection test
   // Test cannot be run from Xcode as it uses environment variables.
-  @Test("Client connects to Aurora/remote database, create a node with a label.")
+  @Test("Client connects to Aurora/remote database, creates a node with a label.")
   func remoteDBConnectionTest() async throws {
     guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
       throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
@@ -75,7 +75,7 @@ struct SwiftCypherTests {
 
   // MARK: - Complex query
   // Test cannot be run from Xcode as it uses environment variables.
-  @Test("Client connects to Aurora/remote database, create a node with different labels.")
+  @Test("Client connects to Aurora/remote database, creates a node with different labels.")
   func remoteDBComplexQuery() async throws {
     guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
       throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
@@ -103,6 +103,68 @@ struct SwiftCypherTests {
         "description": .string("Weekend trip to the mountains"),
       ]
     )
+
+    _ = try await client.runQuery(request: request)
+  }
+
+  // MARK: - Relationship
+  // Test cannot be run from Xcode as it uses environment variables.
+  @Test("Client connects to Aurora/remote database, creates a relationship.")
+  func remoteDBRelationship() async throws {
+    guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
+      throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
+    }
+    guard let username = reader.string(forKey: "NEO4J_USERNAME"),
+      let password = reader.string(forKey: "NEO4J_PASSWORD")
+    else {
+      throw SwiftCypherError.missingCredentials
+    }
+
+    let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
+
+    /// `MATCH (alice:FRIEND {name: 'Alice'}),
+    ///     (bob:FRIEND {name: 'Bob'}),
+    ///     (charles:FRIEND {name: 'Charles'}),
+    ///      (event:EVENT {name: 'Skiing in Tirol'})
+    /// CREATE (coffee:ACTIVITY {
+    ///   item: 'Coffee',
+    ///   date: date('2026-02-01'),
+    ///   totalAmount: 15.00,
+    ///    currency: 'EUR'
+    ///  })
+    ///  CREATE (bob)-[:PAID_FOR {amount: 15.00}]->(coffee),
+    ///         (alice)-[:PARTICIPATED_IN]->(coffee),
+    ///         (charles)-[:PARTICIPATED_IN]->(coffee),
+    ///         (coffee)-[:BELONGS_TO]->(event)`
+      let request = QueryRequest(
+          statement: """
+            MATCH (alice:FRIEND {name: $aliceName}),
+                  (bob:FRIEND {name: $bobName}),
+                  (charles:FRIEND {name: $charlesName}),
+                  (event:EVENT {name: $eventName})
+            CREATE (coffee:ACTIVITY {
+              item: $item,
+              date: date($activityDate),
+              totalAmount: $totalAmount,
+              currency: $currency
+            })
+            CREATE (bob)-[:PAID_FOR {amount: $amount}]->(coffee),
+                   (alice)-[:PARTICIPATED_IN]->(coffee),
+                   (charles)-[:PARTICIPATED_IN]->(coffee),
+                   (coffee)-[:BELONGS_TO]->(event)
+            """,
+          parameters: [
+            "aliceName": .string("Alice"),
+            "bobName": .string("Bob"),
+            "charlesName": .string("Charles"),
+            "eventName": .string("Skiing in Tirol"),
+            "item": .string("Pizza"),
+            "activityDate": .date("2026-02-01"),
+            "totalAmount": .double(45.00),
+            "currency": .string("EUR"),
+            "amount": .double(45.00),
+          ]
+        )
 
     _ = try await client.runQuery(request: request)
   }
