@@ -16,7 +16,9 @@ import Foundation
 
 // MARK: - QueryResponse
 /// Based on: https://neo4j.com/docs/query-api/current/plain-json/
-public struct QueryResponse: Codable {
+public struct QueryResponse: Codable, Sequence {
+  public typealias Element = [String: Neo4jValue]
+
   private let data: QueryData
   public let bookmarks: [String]
 
@@ -28,6 +30,11 @@ public struct QueryResponse: Codable {
     data.values.map { row in
       Dictionary(uniqueKeysWithValues: zip(data.fields, row))
     }
+  }
+
+  // MARK: Sequence conformance
+  public func makeIterator() -> IndexingIterator<[[String: Neo4jValue]]> {
+    rows.makeIterator()
   }
 }
 
