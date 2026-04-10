@@ -19,17 +19,29 @@ public struct SwiftCypherClient {
   let hostURL: String
   let username: String
   let password: String
+  let logger: Logger
 
-  public init(service: Service = .localhost(), username: String = "neo4j", password: String) {
+  public init(service: Service = .localhost(), username: String = "neo4j", password: String, logger: Logger = Logger(label: "SwiftCypherClient")) {
     self.hostURL = service.url
     self.username = username
     self.password = password
+    self.logger = logger
   }
 
   // MARK: - runs a query
   /// The server wraps the submitted Cypher query in a (implicit) transaction for you.
   /// Each request must include an Authorization header.
-  public func runQuery() async throws {
+  /// ```
+  /// let request = QueryRequest(
+  ///   statement: "MERGE (n:Person {name: $name, age: $age}) RETURN n AS alice",
+  ///   parameters: [
+  ///       "name": .string("Alice"),
+  ///       "age": .int(42)
+  //   ]
+  /// )
+  ///   ```
+  ///
+  public func runQuery(request: QueryRequest) async throws -> QueryResponse {
     guard let url = URL(string: "\(hostURL)") else {
       Logger(label: "SwiftCypherClient").error("Invalid URL")
       throw SwiftCypherError.invalidURL
@@ -41,9 +53,25 @@ public struct SwiftCypherClient {
     let credentials = "\(username):\(password)".data(using: .utf8)!.base64EncodedString()
     urlRequest.addValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
 
-    let body = ["statement": "MATCH (n:Person) RETURN n.name"]
-    urlRequest.httpBody = try JSONEncoder().encode(body)
-    let (_, response) = try await URLSession.shared.data(for: urlRequest)
-    print(response)
+    urlRequest.httpBody = try JSONEncoder().encode(request)
+    let (data, response) = try await URLSession.shared.data(for: urlRequest)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw SwiftCypherError.invalidHTTPResponse
+    }
+
+    // `202: Accepted`
+    if httpResponse.statusCode != 202 {
+      logger.error("Unexpected status code: \(httpResponse.statusCode)")
+      throw SwiftCypherError.unsuccessfulRequest
+    }
+
+    do {
+      let response = try JSONDecoder().decode(QueryResponse.self, from: data)
+      return response
+    }
+    catch {
+      throw SwiftCypherError.jsonDecodingError
+    }
   }
 }
