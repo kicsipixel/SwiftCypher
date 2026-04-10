@@ -15,7 +15,7 @@
 import Foundation
 
 // MARK: - QueryResponse
-/// Based on: https://neo4j.com/docs/query-api/current/plain-json/
+/// Based on: https://neo4j.com/docs/query-api/current/typed-json/
 public struct QueryResponse: Codable, Sequence {
   public typealias Element = [String: Neo4jValue]
 
@@ -49,6 +49,12 @@ public struct Neo4jNode: Codable {
   public let elementId: String
   public let labels: [String]
   public let properties: [String: Neo4jValue]
+
+  enum CodingKeys: String, CodingKey {
+    case elementId = "_element_id"
+    case labels = "_labels"
+    case properties = "_properties"
+  }
 }
 
 // MARK: - Neo4jValue
@@ -58,11 +64,37 @@ public enum Neo4jValue: Codable {
   case double(Double)
   case bool(Bool)
   case null
+  case date(String)
   case node(Neo4jNode)
   case list([Neo4jValue])
   case map([String: Neo4jValue])
 
+  private enum TypedKeys: String, CodingKey {
+    case type = "$type"
+    case value = "_value"
+  }
+
   public init(from decoder: Decoder) throws {
+    // Typed JSON: {"$type": "...", "_value": ...}
+    if let keyed = try? decoder.container(keyedBy: TypedKeys.self),
+      let typeString = try? keyed.decode(String.self, forKey: .type)
+    {
+      switch typeString {
+      case "Null": self = .null
+      case "Boolean": self = .bool(try keyed.decode(Bool.self, forKey: .value))
+      case "Integer": self = .int(Int(try keyed.decode(String.self, forKey: .value)) ?? 0)
+      case "Float": self = .double(Double(try keyed.decode(String.self, forKey: .value)) ?? 0)
+      case "String": self = .string(try keyed.decode(String.self, forKey: .value))
+      case "Date": self = .date(try keyed.decode(String.self, forKey: .value))
+      case "Node": self = .node(try keyed.decode(Neo4jNode.self, forKey: .value))
+      case "List": self = .list(try keyed.decode([Neo4jValue].self, forKey: .value))
+      case "Map": self = .map(try keyed.decode([String: Neo4jValue].self, forKey: .value))
+      default: self = .null
+      }
+      return
+    }
+
+    // Plain JSON fallback
     let container = try decoder.singleValueContainer()
     if container.decodeNil() {
       self = .null
@@ -113,6 +145,7 @@ public enum Neo4jValue: Codable {
     case .double(let v): try container.encode(v)
     case .bool(let v): try container.encode(v)
     case .null: try container.encodeNil()
+    case .date(let v): try container.encode(v)
     case .node(let v): try container.encode(v)
     case .list(let v): try container.encode(v)
     case .map(let v): try container.encode(v)
@@ -136,6 +169,10 @@ extension Neo4jValue {
   }
   public var boolValue: Bool? {
     if case .bool(let v) = self { return v }
+    return nil
+  }
+  public var dateValue: String? {
+    if case .date(let v) = self { return v }
     return nil
   }
   public var nodeValue: Neo4jNode? {

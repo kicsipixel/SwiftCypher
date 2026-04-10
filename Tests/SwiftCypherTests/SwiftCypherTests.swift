@@ -72,4 +72,38 @@ struct SwiftCypherTests {
 
     _ = try await client.runQuery(request: request)
   }
+
+  // MARK: - Complex query
+  // Test cannot be run from Xcode as it uses environment variables.
+  @Test("Client connects to Aurora/remote database, create a node with different labels.")
+  func remoteDBComplexQuery() async throws {
+    guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
+      throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
+    }
+    guard let username = reader.string(forKey: "NEO4J_USERNAME"),
+      let password = reader.string(forKey: "NEO4J_PASSWORD")
+    else {
+      throw SwiftCypherError.missingCredentials
+    }
+
+    let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
+
+    /// `CREATE (event:EVENT {
+    ///    name: 'Skiing in Tirol',
+    ///    start_date: date('2026-02-01'),
+    ///    end_date: date('2026-02-03'),
+    ///    description: 'Weekend trip to the mountains'
+    ///  })`
+    let request = QueryRequest(
+      statement: "CREATE (event:EVENT {name: $name, start_date: $start_date, end_date: $end_date, description: $description})",
+      parameters: [
+        "name": .string("Skiing in Tirol"),
+        "start_date": .date("2026-02-01"),
+        "end_date": .date("2026-02-03"),
+        "description": .string("Weekend trip to the mountains"),
+      ]
+    )
+
+    _ = try await client.runQuery(request: request)
+  }
 }
