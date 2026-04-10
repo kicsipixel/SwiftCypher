@@ -1,29 +1,52 @@
 # SwiftCypher
 
-A lightweight, idiomatic Swift wrapper for the [Neo4j Query API](https://neo4j.com/docs/query-api/current/) (v2). Execute Cypher queries over HTTPS from any Swift platform — iOS, macOS, Linux, or serverless — with no Bolt driver required.
+A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.com/docs/query-api/current/) (v2). Execute Cypher queries over HTTPS from any Swift platform — iOS, macOS, or Linux — with no Bolt driver required.
+
+![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)
+![macOS 15+](https://img.shields.io/badge/macOS-15%2B-blue.svg)
+![iOS 18+](https://img.shields.io/badge/iOS-18%2B-blue.svg)
+![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
+
+---
+
+## Features
+
+- Pure Swift, zero native dependencies — works on macOS, iOS, and Linux
+- Async/await API built on `URLSession`
+- Supports local Neo4j instances and [Neo4j Aura](https://neo4j.com/cloud/platform/aura-graph-database/) (cloud)
+- Typed response values: `String`, `Integer`, `Float`, `Boolean`, `Date`, `Node`, `List`, `Map`
+- Typed JSON responses via `application/vnd.neo4j.query.v1.1` — no ambiguous types
+- Parameterized queries to prevent Cypher injection and improve query plan caching
+- Credentials loaded from environment variables or `.env` files via [swift-configuration](https://github.com/apple/swift-configuration)
 
 ---
 
 ## Requirements
 
-| Platform | Minimum Version |
-|----------|----------------|
-| macOS    | 15.0+          |
-| iOS      | 18.0+          |
+| Platform | Minimum |
+|----------|---------|
+| macOS    | 15.0+   |
+| iOS      | 18.0+   |
 
-**Neo4j:** 5.19+ (Query API v2)  
-**Swift:** 6.0+ (strict concurrency enabled)
+- **Neo4j:** 5.19+ (Query API v2)
+- **Swift:** 6.0+
 
 ---
 
 ## Installation
 
-### Swift Package Manager
+Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
     .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.0.1")
 ]
+```
+
+Then add `SwiftCypher` to your target's dependencies:
+
+```swift
+.target(name: "MyApp", dependencies: ["SwiftCypher"])
 ```
 
 Or via Xcode: **File → Add Package Dependencies** and paste the repository URL.
@@ -33,14 +56,9 @@ Or via Xcode: **File → Add Package Dependencies** and paste the repository URL
 ## Quick Start
 
 ```swift
-import Configuration
 import SwiftCypher
 
-// Credentials come from environment variables or a .env file using Swift Configuration
-let username = reader.string(forKey: "USERNAME") ?? "neo4j"
-let password = reader.string(forKey: "PASSWORD") ?? "neo4j"
-
-let client = SwiftCypherClient(username: username, password: password)
+let client = SwiftCypherClient(username: "neo4j", password: "yourpassword")
 let request = QueryRequest(statement: "MATCH (n:Person) RETURN n.name")
 let response = try await client.runQuery(request: request)
 
@@ -53,16 +71,13 @@ for row in response.rows {
 
 ## Connecting to Neo4j
 
-Credentials are read from environment variables or a `.env` file — never hardcoded.
+Credentials should be read from environment variables or a `.env` file — never hardcoded.
 
 ### Local instance (default)
 
 ```swift
-let username = reader.string(forKey: "USERNAME") ?? "neo4j"
-let password = reader.string(forKey: "PASSWORD") ?? "neo4j"
-
 let client = SwiftCypherClient(username: username, password: password)
-// Connects to http://localhost:7474/db/neo4j/query/v2
+// → http://localhost:7474/db/neo4j/query/v2
 ```
 
 ### Local instance with a custom database
@@ -78,20 +93,15 @@ let client = SwiftCypherClient(
 ### Neo4j Aura (cloud)
 
 ```swift
-guard let db       = reader.string(forKey: "NEO4J_DATABASE"),
-      let username = reader.string(forKey: "NEO4J_USERNAME"),
-      let password = reader.string(forKey: "NEO4J_PASSWORD")
-else { throw SwiftCypherError.missingCredentials }
-
 let client = SwiftCypherClient(
     service: .aura(database: db),
     username: username,
     password: password
 )
-// Connects to https://<database>.databases.neo4j.io/db/<database>/query/v2
+// → https://<db>.databases.neo4j.io/db/<db>/query/v2
 ```
 
-### `.env` file format
+### `.env` file
 
 ```
 # Local
@@ -99,15 +109,13 @@ USERNAME=neo4j
 PASSWORD=yourpassword
 
 # Aura
-NEO4J_DATABASE=your-aura-instance
+NEO4J_DATABASE=your-aura-instance-id
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=your-aura-password
 ```
 
-The `Service` enum builds the correct URL for each environment:
-
-| Case | URL |
-|------|-----|
+| Service | URL |
+|---------|-----|
 | `.localhost(database:)` | `http://localhost:7474/db/{database}/query/v2` |
 | `.aura(database:)` | `https://{database}.databases.neo4j.io/db/{database}/query/v2` |
 
@@ -115,67 +123,94 @@ The `Service` enum builds the correct URL for each environment:
 
 ## Running Queries
 
-### Without parameters
+### Read
 
 ```swift
 let request = QueryRequest(statement: "MATCH (n:Person) RETURN n.name, n.age")
 let response = try await client.runQuery(request: request)
 ```
 
-### With parameters (always prefer this)
+### Write with parameters
 
-Always use parameterized queries instead of string interpolation — this prevents Cypher injection and improves server-side query plan caching.
+Always prefer parameterized queries over string interpolation — they prevent Cypher injection and enable server-side query plan caching.
 
 ```swift
 let request = QueryRequest(
-    statement: "MERGE (n:Person {name: $name, age: $age}) RETURN n",
-    parameters: ["name": "Alice", "age": 30]
+    statement: "CREATE (n:Person {name: $name, age: $age})",
+    parameters: [
+        "name": .string("Alice"),
+        "age": .int(30),
+    ]
+)
+_ = try await client.runQuery(request: request)
+```
+
+### Relationships
+
+```swift
+let request = QueryRequest(
+    statement: """
+        MATCH (alice:Person {name: $alice}), (bob:Person {name: $bob})
+        CREATE (alice)-[:KNOWS]->(bob)
+        """,
+    parameters: [
+        "alice": .string("Alice"),
+        "bob": .string("Bob"),
+    ]
 )
 ```
 
-`Neo4jValue` conforms to Swift's literal protocols, so you can pass plain Swift literals directly in the parameters dictionary.
+### Dates
 
-### Create nodes
+Pass dates as `.date("yyyy-MM-dd")` and wrap with `date()` in the Cypher statement:
 
 ```swift
 let request = QueryRequest(
-    statement: "CREATE (n:Person {name: $name}) RETURN n",
-    parameters: ["name": "Szabolcs"]
+    statement: """
+        CREATE (e:Event {
+            name: $name,
+            start_date: date($startDate),
+            end_date: date($endDate)
+        })
+        """,
+    parameters: [
+        "name": .string("Skiing in Tirol"),
+        "startDate": .date("2026-02-01"),
+        "endDate": .date("2026-02-03"),
+    ]
 )
-let response = try await client.runQuery(request: request)
 ```
 
 ---
 
 ## Working with Results
 
-`QueryResponse` exposes three properties:
+`QueryResponse` exposes:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `rows` | `[[String: Neo4jValue]]` | Results as field-keyed dictionaries |
+| `rows` | `[[String: Neo4jValue]]` | Results keyed by field name |
 | `fields` | `[String]` | Column names from the `RETURN` clause |
-| `bookmarks` | `[String]` | Opaque tokens for causal consistency |
-
-### Accessing row values
+| `bookmarks` | `[String]` | Opaque tokens for causal consistency chaining |
 
 ```swift
 for row in response.rows {
-    let name  = row["n.name"]?.stringValue   // String?
-    let age   = row["n.age"]?.intValue       // Int?
-    let score = row["n.score"]?.doubleValue  // Double?
-    let active = row["n.active"]?.boolValue  // Bool?
-    let node  = row["n"]?.nodeValue          // Neo4jNode?
+    let name   = row["n.name"]?.stringValue    // String?
+    let age    = row["n.age"]?.intValue        // Int?
+    let score  = row["n.score"]?.doubleValue   // Double?
+    let active = row["n.active"]?.boolValue    // Bool?
+    let joined = row["n.joined"]?.dateValue    // String? (ISO 8601)
+    let node   = row["n"]?.nodeValue           // Neo4jNode?
 }
 ```
 
-### Accessing node properties
+### Nodes
 
 ```swift
 if let node = row["n"]?.nodeValue {
-    print(node.elementId)              // "4:abc123:0"
-    print(node.labels)                 // ["Person"]
-    print(node.properties["name"])     // Neo4jValue.string("Alice")
+    print(node.elementId)               // "4:abc123:0"
+    print(node.labels)                  // ["Person"]
+    print(node.properties["name"])      // Neo4jValue.string("Alice")
 }
 ```
 
@@ -183,52 +218,38 @@ if let node = row["n"]?.nodeValue {
 
 ## Data Types
 
-`Neo4jValue` maps all Cypher types to Swift:
+Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.query.v1.1`), which preserves type information for every value.
 
-| Cypher Type | Neo4jValue case | Accessor |
-|------------|----------------|----------|
+| Cypher Type | `Neo4jValue` case | Accessor |
+|-------------|-------------------|----------|
 | `STRING` | `.string(String)` | `.stringValue` |
 | `INTEGER` | `.int(Int)` | `.intValue` |
 | `FLOAT` | `.double(Double)` | `.doubleValue` |
 | `BOOLEAN` | `.bool(Bool)` | `.boolValue` |
 | `NULL` | `.null` | — |
+| `DATE` | `.date(String)` | `.dateValue` |
 | `NODE` | `.node(Neo4jNode)` | `.nodeValue` |
 | `LIST` | `.list([Neo4jValue])` | `.listValue` |
 | `MAP` | `.map([String: Neo4jValue])` | `.mapValue` |
 
-`Neo4jValue` also conforms to Swift's literal protocols so you can write:
+---
 
-```swift
-let params: [String: Neo4jValue] = [
-    "name":   "Alice",   // ExpressibleByStringLiteral
-    "age":    30,        // ExpressibleByIntegerLiteral
-    "score":  98.5,      // ExpressibleByFloatLiteral
-    "active": true       // ExpressibleByBooleanLiteral
-]
-```
+## Error Handling
+
+`runQuery` throws `SwiftCypherError` on failure:
+
+| Error | Cause |
+|-------|-------|
+| `.invalidURL` | Malformed host URL |
+| `.invalidHTTPResponse` | Non-HTTP response received |
+| `.unsuccessfulRequest` | Server returned non-202 status |
+| `.jsonDecodingError` | Response body could not be decoded |
+| `.missingCredentials` | Required credentials not found in environment |
+| `.missingDatabaseName(key:)` | Required database key not found in environment |
 
 ---
 
 ## License
 
-MIT License
-
-Copyright (c) 2026 Szabolcs Tóth and the SwiftCypher project authors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT License — Copyright (c) 2026 Szabolcs Tóth and the SwiftCypher project authors.  
+See [LICENSE](LICENSE) for details.
