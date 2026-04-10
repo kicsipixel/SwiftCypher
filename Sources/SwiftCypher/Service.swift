@@ -23,10 +23,8 @@ public enum Service {
   var url: String {
     switch self {
     case .localhost(let database):
-      Logger(label: "SwiftCypherClient").info("The url set: \("http://localhost:7474/db/\(database)/query/v2")")
       return "http://localhost:7474/db/\(database)/query/v2"
     case .aura(let database):
-      Logger(label: "SwiftCypherClient").info("The url set: \("https://\(database).databases.neo4j.io/db/\(database)/query/v2")")
       return "https://\(database).databases.neo4j.io/db/\(database)/query/v2"
     }
   }
