@@ -138,17 +138,24 @@ public enum Neo4jValue: Codable {
   }
 
   public func encode(to encoder: Encoder) throws {
-    var container = encoder.singleValueContainer()
     switch self {
-    case .null:          try container.encodeNil()
-    case .bool(let v):   try container.encode(v)
-    case .int(let v):    try container.encode(v)
-    case .double(let v): try container.encode(v)
-    case .string(let v): try container.encode(v)
-    case .date(let v):   try container.encode(v)
-    case .node(let v):   try container.encode(v)
-    case .list(let v):   try container.encode(v)
-    case .map(let v):    try container.encode(v)
+    case .double(let v):
+      var container = encoder.container(keyedBy: TypedKeys.self)
+      try container.encode("Float", forKey: .type)
+      try container.encode(String(v), forKey: .value)
+    default:
+      var container = encoder.singleValueContainer()
+      switch self {
+      case .null:          try container.encodeNil()
+      case .bool(let v):   try container.encode(v)
+      case .int(let v):    try container.encode(v)
+      case .string(let v): try container.encode(v)
+      case .date(let v):   try container.encode(v)
+      case .node(let v):   try container.encode(v)
+      case .list(let v):   try container.encode(v)
+      case .map(let v):    try container.encode(v)
+      case .double:        break  // handled above
+      }
     }
   }
 }
