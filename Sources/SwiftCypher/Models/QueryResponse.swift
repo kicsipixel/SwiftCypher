@@ -138,24 +138,34 @@ public enum Neo4jValue: Codable {
   }
 
   public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: TypedKeys.self)
     switch self {
+    case .null:
+      try container.encode("Null", forKey: .type)
+    case .bool(let v):
+      try container.encode("Boolean", forKey: .type)
+      try container.encode(v, forKey: .value)
+    case .int(let v):
+      try container.encode("Integer", forKey: .type)
+      try container.encode(String(v), forKey: .value)
     case .double(let v):
-      var container = encoder.container(keyedBy: TypedKeys.self)
       try container.encode("Float", forKey: .type)
       try container.encode(String(v), forKey: .value)
-    default:
-      var container = encoder.singleValueContainer()
-      switch self {
-      case .null:          try container.encodeNil()
-      case .bool(let v):   try container.encode(v)
-      case .int(let v):    try container.encode(v)
-      case .string(let v): try container.encode(v)
-      case .date(let v):   try container.encode(v)
-      case .node(let v):   try container.encode(v)
-      case .list(let v):   try container.encode(v)
-      case .map(let v):    try container.encode(v)
-      case .double:        break
-      }
+    case .string(let v):
+      try container.encode("String", forKey: .type)
+      try container.encode(v, forKey: .value)
+    case .date(let v):
+      try container.encode("Date", forKey: .type)
+      try container.encode(v, forKey: .value)
+    case .node(let v):
+      try container.encode("Node", forKey: .type)
+      try container.encode(v, forKey: .value)
+    case .list(let v):
+      try container.encode("List", forKey: .type)
+      try container.encode(v, forKey: .value)
+    case .map(let v):
+      try container.encode("Map", forKey: .type)
+      try container.encode(v, forKey: .value)
     }
   }
 }
