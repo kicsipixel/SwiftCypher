@@ -49,7 +49,7 @@ public struct SwiftCypherClient: Sendable {
 
     var urlRequest = URLRequest(url: url)
     urlRequest.httpMethod = "POST"
-    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    urlRequest.setValue("application/vnd.neo4j.query.v1.1", forHTTPHeaderField: "Content-Type")
     urlRequest.setValue("application/vnd.neo4j.query.v1.1", forHTTPHeaderField: "Accept")
     let credentials = "\(username):\(password)".data(using: .utf8)!.base64EncodedString()
     urlRequest.addValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
