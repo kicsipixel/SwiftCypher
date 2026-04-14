@@ -15,6 +15,10 @@
 import Foundation
 import Logging
 
+#if canImport(FoundationNetworking)
+  import FoundationNetworking
+#endif
+
 public struct SwiftCypherClient: Sendable {
   let hostURL: String
   let username: String
