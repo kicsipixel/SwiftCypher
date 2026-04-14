@@ -46,7 +46,7 @@ dependencies: [
 Then add `SwiftCypher` to your target's dependencies:
 
 ```swift
-.target(name: "MyApp", dependencies: ["SwiftCypher"])
+    .product(name: "SwiftCypher", package: "SwiftCypher"),
 ```
 
 Or via Xcode: **File → Add Package Dependencies** and paste the repository URL.
