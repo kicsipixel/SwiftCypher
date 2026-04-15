@@ -67,7 +67,8 @@ public struct SwiftCypherClient: Sendable {
 
     // `202: Accepted`
     if httpResponse.statusCode != 202 {
-      logger.error("Unexpected status code: \(httpResponse.statusCode)")
+      let body = String(data: data, encoding: .utf8) ?? "<non-UTF8 body>"
+      logger.error("Unexpected status code: \(httpResponse.statusCode), body: \(body)")
       throw SwiftCypherError.unsuccessfulRequest
     }
 
