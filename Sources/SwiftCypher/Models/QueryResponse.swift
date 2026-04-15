@@ -14,6 +14,17 @@
 
 import Foundation
 
+// MARK: - QueryCounters
+public struct QueryCounters: Codable {
+  public let nodesCreated: Int
+  public let nodesDeleted: Int
+  public let propertiesSet: Int
+  public let relationshipsCreated: Int
+  public let relationshipsDeleted: Int
+  public let labelsAdded: Int
+  public let labelsRemoved: Int
+}
+
 // MARK: - QueryResponse
 /// Based on: https://neo4j.com/docs/query-api/current/typed-json/
 public struct QueryResponse: Codable, Sequence {
@@ -21,6 +32,7 @@ public struct QueryResponse: Codable, Sequence {
 
   private let data: QueryData
   public let bookmarks: [String]
+  public let counters: QueryCounters?
 
   public var fields: [String] {
     data.fields
