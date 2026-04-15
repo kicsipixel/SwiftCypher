@@ -54,7 +54,7 @@ struct SwiftCypherTests {
 
   // MARK: - Aurora/Remote database connection test
   // Test cannot be run from Xcode as it uses environment variables.
-  @Test("Client connects to Aurora/remote database, creates a node with a label.")
+  @Test("Client connects to Aura/remote database, creates a node with a label.")
   func remoteDBConnectionTest() async throws {
     guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
       throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
@@ -75,7 +75,7 @@ struct SwiftCypherTests {
 
   // MARK: - Complex query
   // Test cannot be run from Xcode as it uses environment variables.
-  @Test("Client connects to Aurora/remote database, creates a node with different labels.")
+  @Test("Client connects to Aura/remote database, creates a node with different labels.")
   func remoteDBComplexQuery() async throws {
     guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
       throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
@@ -109,7 +109,7 @@ struct SwiftCypherTests {
 
   // MARK: - Relationship
   // Test cannot be run from Xcode as it uses environment variables.
-  @Test("Client connects to Aurora/remote database, creates a relationship.")
+  @Test("Client connects to Aura/remote database, creates a relationship.")
   func remoteDBRelationship() async throws {
     guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
       throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
