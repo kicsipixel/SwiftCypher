@@ -39,7 +39,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.0.1")
+    .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.2.0")
 ]
 ```
 
