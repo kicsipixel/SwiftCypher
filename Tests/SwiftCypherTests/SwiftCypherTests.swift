@@ -31,6 +31,7 @@ struct SwiftCypherTests {
 
   // MARK: - Local database test
   // Test cannot be run from Xcode as it uses environment variables.
+  /// Simple query to test if the client can connect to Neo4j database.
   @Test("Client connects to local database and makes a simple query.")
   func localDBConnectionTest() async throws {
     guard let username = reader.string(forKey: "USERNAME"),
@@ -52,6 +53,31 @@ struct SwiftCypherTests {
     }
   }
 
+  /// Query to create node and test `QueryCounters` model
+  @Test("Client connects to local database and create node.")
+  func localDBCreateNodeTest() async throws {
+    guard let username = reader.string(forKey: "USERNAME"),
+      let password = reader.string(forKey: "PASSWORD")
+    else {
+      throw SwiftCypherError.missingCredentials
+    }
+
+    let client = SwiftCypherClient(
+      service: .localhost(database: "splitwise"),
+      username: username,
+      password: password
+    )
+    let name = "Szabolcs"
+    let queryRequest = QueryRequest(statement: "CREATE (n:FRIEND {name: $name})", parameters: ["name": .string(name)])
+
+    let response = try await client.runQuery(request: queryRequest)
+
+    guard let nodesCreated = response.counters?.nodesCreated else {
+      throw SwiftCypherError.unsuccessfulRequest
+    }
+    #expect(nodesCreated > 0)
+  }
+
   // MARK: - Aurora/Remote database connection test
   // Test cannot be run from Xcode as it uses environment variables.
   @Test("Client connects to Aura/remote database, creates a node with a label.")
@@ -67,7 +93,7 @@ struct SwiftCypherTests {
 
     let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
 
-    /// `CREATE (alice:FRIEND {name: 'Szabolcs'})`
+    /// `CREATE (n:FRIEND {name: 'Szabolcs'})`
     let request = QueryRequest(statement: "CREATE (szabolcs:FRIEND {name: $name})", parameters: ["name": .string("Szabolcs")])
 
     _ = try await client.runQuery(request: request)
@@ -136,35 +162,35 @@ struct SwiftCypherTests {
     ///         (alice)-[:PARTICIPATED_IN]->(coffee),
     ///         (charles)-[:PARTICIPATED_IN]->(coffee),
     ///         (coffee)-[:BELONGS_TO]->(event)`
-      let request = QueryRequest(
-          statement: """
-            MATCH (alice:FRIEND {name: $aliceName}),
-                  (bob:FRIEND {name: $bobName}),
-                  (charles:FRIEND {name: $charlesName}),
-                  (event:EVENT {name: $eventName})
-            CREATE (coffee:ACTIVITY {
-              item: $item,
-              date: date($activityDate),
-              totalAmount: $totalAmount,
-              currency: $currency
-            })
-            CREATE (bob)-[:PAID_FOR {amount: $amount}]->(coffee),
-                   (alice)-[:PARTICIPATED_IN]->(coffee),
-                   (charles)-[:PARTICIPATED_IN]->(coffee),
-                   (coffee)-[:BELONGS_TO]->(event)
-            """,
-          parameters: [
-            "aliceName": .string("Alice"),
-            "bobName": .string("Bob"),
-            "charlesName": .string("Charles"),
-            "eventName": .string("Skiing in Tirol"),
-            "item": .string("Pizza"),
-            "activityDate": .date("2026-02-01"),
-            "totalAmount": .double(45.00),
-            "currency": .string("EUR"),
-            "amount": .double(45.00),
-          ]
-        )
+    let request = QueryRequest(
+      statement: """
+        MATCH (alice:FRIEND {name: $aliceName}),
+              (bob:FRIEND {name: $bobName}),
+              (charles:FRIEND {name: $charlesName}),
+              (event:EVENT {name: $eventName})
+        CREATE (coffee:ACTIVITY {
+          item: $item,
+          date: date($activityDate),
+          totalAmount: $totalAmount,
+          currency: $currency
+        })
+        CREATE (bob)-[:PAID_FOR {amount: $amount}]->(coffee),
+               (alice)-[:PARTICIPATED_IN]->(coffee),
+               (charles)-[:PARTICIPATED_IN]->(coffee),
+               (coffee)-[:BELONGS_TO]->(event)
+        """,
+      parameters: [
+        "aliceName": .string("Alice"),
+        "bobName": .string("Bob"),
+        "charlesName": .string("Charles"),
+        "eventName": .string("Skiing in Tirol"),
+        "item": .string("Pizza"),
+        "activityDate": .date("2026-02-01"),
+        "totalAmount": .double(45.00),
+        "currency": .string("EUR"),
+        "amount": .double(45.00),
+      ]
+    )
 
     _ = try await client.runQuery(request: request)
   }
