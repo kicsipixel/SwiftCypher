@@ -25,7 +25,7 @@ public struct SwiftCypherClient: Sendable {
   let password: String
   let logger: Logger
 
-  public init(service: Service = .localhost(), username: String = "neo4j", password: String, logger: Logger = Logger(label: "SwiftCypherClient")) {
+  private init(service: Service = .localhost(), username: String = "neo4j", password: String, logger: Logger = Logger(label: "SwiftCypherClient")) {
     self.hostURL = service.url
     self.username = username
     self.password = password
