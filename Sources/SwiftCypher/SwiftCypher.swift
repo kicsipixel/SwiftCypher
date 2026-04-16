@@ -65,8 +65,7 @@ public struct SwiftCypherClient: Sendable {
   // MARK: - ping
   /// Sends a lightweight query to verify the connection is alive.
   public func ping() async throws {
-    let request = QueryRequest(statement: "RETURN 1")
-    _ = try await runQuery(request: request)
+    _ = try await _runQuery(request: QueryRequest(statement: "RETURN 1"))
   }
 
   // MARK: - runs a query
@@ -86,9 +85,29 @@ public struct SwiftCypherClient: Sendable {
     do {
       return try await _runQuery(request: request)
     } catch {
-      // Stale keep-alive connection — retry once with a fresh connection
-      logger.warning("Query failed, retrying once...")
+      logger.warning("Query failed, waiting for Neo4j to recover...")
+      try await reconnect()
+      logger.info("Reconnected, retrying query...")
       return try await _runQuery(request: request)
+    }
+  }
+
+  // MARK: - reconnect
+  private func reconnect() async throws {
+    var attempts = 0
+    while true {
+      do {
+        try await ping()
+        return
+      } catch {
+        attempts += 1
+        guard attempts < 10 else {
+          logger.error("Neo4j did not recover after \(attempts) attempts")
+          throw error
+        }
+        logger.warning("Neo4j not responding, retrying (\(attempts)/10)...")
+        try await Task.sleep(for: .seconds(1))
+      }
     }
   }
 
