@@ -58,7 +58,7 @@ Or via Xcode: **File → Add Package Dependencies** and paste the repository URL
 ```swift
 import SwiftCypher
 
-let client = SwiftCypherClient(username: "neo4j", password: "yourpassword")
+let client = try await SwiftCypherClient.connect(password: "yourpassword")
 let request = QueryRequest(statement: "MATCH (n:Person) RETURN n.name")
 let response = try await client.runQuery(request: request)
 
@@ -73,17 +73,19 @@ for row in response.rows {
 
 Credentials should be read from environment variables or a `.env` file — never hardcoded.
 
+Use `SwiftCypherClient.connect(...)` to create a client. It verifies the connection is live before returning, retrying up to 10 times with 1-second intervals — useful when starting alongside a Neo4j container. Call `ping()` on an existing client to re-check the connection at any time.
+
 ### Local instance (default)
 
 ```swift
-let client = SwiftCypherClient(username: username, password: password)
+let client = try await SwiftCypherClient.connect(username: username, password: password)
 // → http://localhost:7474/db/neo4j/query/v2
 ```
 
 ### Local instance with a custom database
 
 ```swift
-let client = SwiftCypherClient(
+let client = try await SwiftCypherClient.connect(
     service: .localhost(database: "mydb"),
     username: username,
     password: password
@@ -93,7 +95,7 @@ let client = SwiftCypherClient(
 ### Neo4j Aura (cloud)
 
 ```swift
-let client = SwiftCypherClient(
+let client = try await SwiftCypherClient.connect(
     service: .aura(database: db),
     username: username,
     password: password
@@ -192,6 +194,7 @@ let request = QueryRequest(
 | `rows` | `[[String: Neo4jValue]]` | Results keyed by field name |
 | `fields` | `[String]` | Column names from the `RETURN` clause |
 | `bookmarks` | `[String]` | Opaque tokens for causal consistency chaining |
+| `counters` | `QueryCounters?` | Write statistics (nodes/relationships created or deleted, properties set, labels added/removed) |
 
 ```swift
 for row in response.rows {
@@ -212,6 +215,35 @@ if let node = row["n"]?.nodeValue {
     print(node.labels)                  // ["Person"]
     print(node.properties["name"])      // Neo4jValue.string("Alice")
 }
+```
+
+### Write statistics
+
+Neo4j silently ignores write operations that match nothing (e.g. deleting a non-existent node). Use `QueryCounters` to confirm that a write actually had an effect.
+
+`counters` is populated when `includeCounters` is `true` (the default) on the `QueryRequest`:
+
+```swift
+let request = QueryRequest(
+    statement: "CREATE (n:Person {name: $name})",
+    parameters: ["name": .string("Alice")]
+)
+let response = try await client.runQuery(request: request)
+
+if let counters = response.counters {
+    print(counters.nodesCreated)         // 1
+    print(counters.propertiesSet)        // 1
+    print(counters.relationshipsCreated) // 0
+}
+```
+
+Pass `includeCounters: false` to omit them when you don't need them:
+
+```swift
+let request = QueryRequest(
+    statement: "MATCH (n:Person) RETURN n.name",
+    includeCounters: false
+)
 ```
 
 ---

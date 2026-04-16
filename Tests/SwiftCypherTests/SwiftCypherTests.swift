@@ -40,7 +40,7 @@ struct SwiftCypherTests {
       throw SwiftCypherError.missingCredentials
     }
 
-    let client = SwiftCypherClient(username: username, password: password)
+    let client = try await SwiftCypherClient.connect(username: username, password: password)
     let request = QueryRequest(statement: "MATCH (n:FRIEND) RETURN n.name")
 
     let response = try await client.runQuery(request: request)
@@ -62,7 +62,7 @@ struct SwiftCypherTests {
       throw SwiftCypherError.missingCredentials
     }
 
-    let client = SwiftCypherClient(
+    let client = try await SwiftCypherClient.connect(
       service: .localhost(database: "splitwise"),
       username: username,
       password: password
@@ -91,7 +91,7 @@ struct SwiftCypherTests {
       throw SwiftCypherError.missingCredentials
     }
 
-    let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
+    let client = try await SwiftCypherClient.connect(service: .aura(database: db), username: username, password: password)
 
     /// `CREATE (n:FRIEND {name: 'Szabolcs'})`
     let request = QueryRequest(statement: "CREATE (szabolcs:FRIEND {name: $name})", parameters: ["name": .string("Szabolcs")])
@@ -112,7 +112,7 @@ struct SwiftCypherTests {
       throw SwiftCypherError.missingCredentials
     }
 
-    let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
+    let client = try await SwiftCypherClient.connect(service: .aura(database: db), username: username, password: password)
 
     /// `CREATE (event:EVENT {
     ///    name: 'Skiing in Tirol',
@@ -146,7 +146,7 @@ struct SwiftCypherTests {
       throw SwiftCypherError.missingCredentials
     }
 
-    let client = SwiftCypherClient(service: .aura(database: db), username: username, password: password)
+    let client = try await SwiftCypherClient.connect(service: .aura(database: db), username: username, password: password)
 
     /// `MATCH (alice:FRIEND {name: 'Alice'}),
     ///     (bob:FRIEND {name: 'Bob'}),
