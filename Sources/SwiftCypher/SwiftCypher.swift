@@ -83,6 +83,16 @@ public struct SwiftCypherClient: Sendable {
   ///   ```
   ///
   public func runQuery(request: QueryRequest) async throws -> QueryResponse {
+    do {
+      return try await _runQuery(request: request)
+    } catch {
+      // Stale keep-alive connection — retry once with a fresh connection
+      logger.warning("Query failed, retrying once...")
+      return try await _runQuery(request: request)
+    }
+  }
+
+  private func _runQuery(request: QueryRequest) async throws -> QueryResponse {
     guard let url = URL(string: "\(hostURL)") else {
       Logger(label: "SwiftCypherClient").error("Invalid URL")
       throw SwiftCypherError.invalidURL
@@ -112,8 +122,7 @@ public struct SwiftCypherClient: Sendable {
     do {
       let response = try JSONDecoder().decode(QueryResponse.self, from: data)
       return response
-    }
-    catch {
+    } catch {
       throw SwiftCypherError.jsonDecodingError
     }
   }
