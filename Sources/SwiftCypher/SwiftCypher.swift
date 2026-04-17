@@ -84,6 +84,8 @@ public struct SwiftCypherClient: Sendable {
   public func runQuery(request: QueryRequest) async throws -> QueryResponse {
     do {
       return try await _runQuery(request: request)
+    } catch SwiftCypherError.clientError(let statusCode) {
+      throw SwiftCypherError.clientError(statusCode: statusCode)
     } catch {
       logger.warning("Query failed, waiting for Neo4j to recover...")
       try await reconnect()
@@ -94,6 +96,7 @@ public struct SwiftCypherClient: Sendable {
 
   // MARK: - reconnect
   private func reconnect() async throws {
+    await URLSession.shared.reset()
     var attempts = 0
     while true {
       do {
@@ -135,6 +138,9 @@ public struct SwiftCypherClient: Sendable {
     if httpResponse.statusCode != 202 {
       let body = String(data: data, encoding: .utf8) ?? "<non-UTF8 body>"
       logger.error("Unexpected status code: \(httpResponse.statusCode), body: \(body)")
+      if (400..<500).contains(httpResponse.statusCode) {
+        throw SwiftCypherError.clientError(statusCode: httpResponse.statusCode)
+      }
       throw SwiftCypherError.unsuccessfulRequest
     }
 
