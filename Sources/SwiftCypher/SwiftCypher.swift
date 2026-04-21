@@ -50,7 +50,8 @@ public struct SwiftCypherClient: Sendable {
         try await client.ping()
         logger.info("Connected to Neo4j at \(service.url)")
         return client
-      } catch {
+      }
+      catch {
         attempts += 1
         guard attempts < 10 else {
           logger.error("Failed to connect to Neo4j after \(attempts) attempts")
@@ -84,16 +85,11 @@ public struct SwiftCypherClient: Sendable {
   public func runQuery(request: QueryRequest) async throws -> QueryResponse {
     do {
       return try await _runQuery(request: request)
-    } catch SwiftCypherError.clientError(400) {
-      // Stale keep-alive connection — flush pool and retry once
-      logger.warning("Query returned 400, resetting connection and retrying...")
-      await URLSession.shared.reset()
-      return try await _runQuery(request: request)
-    } catch SwiftCypherError.clientError(let statusCode) {
-      // Real 4xx (401, 403…) — don't retry
+    }
+    catch SwiftCypherError.clientError(let statusCode) {
       throw SwiftCypherError.clientError(statusCode: statusCode)
-    } catch {
-      // Network/server error — full reconnect with backoff
+    }
+    catch {
       logger.warning("Query failed, waiting for Neo4j to recover...")
       try await reconnect()
       logger.info("Reconnected, retrying query...")
@@ -103,13 +99,13 @@ public struct SwiftCypherClient: Sendable {
 
   // MARK: - reconnect
   private func reconnect() async throws {
-    await URLSession.shared.reset()
     var attempts = 0
     while true {
       do {
         try await ping()
         return
-      } catch {
+      }
+      catch {
         attempts += 1
         guard attempts < 10 else {
           logger.error("Neo4j did not recover after \(attempts) attempts")
@@ -131,6 +127,7 @@ public struct SwiftCypherClient: Sendable {
     urlRequest.httpMethod = "POST"
     urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Content-Type")
     urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Accept")
+    urlRequest.setValue("close", forHTTPHeaderField: "Connection")
     let credentials = "\(username):\(password)".data(using: .utf8)!.base64EncodedString()
     urlRequest.addValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
 
@@ -154,7 +151,8 @@ public struct SwiftCypherClient: Sendable {
     do {
       let response = try JSONDecoder().decode(QueryResponse.self, from: data)
       return response
-    } catch {
+    }
+    catch {
       throw SwiftCypherError.jsonDecodingError
     }
   }
