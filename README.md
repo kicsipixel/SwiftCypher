@@ -11,13 +11,12 @@ A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.co
 
 ## Features
 
-- Pure Swift, zero native dependencies — works on macOS, iOS, and Linux
 - Async/await API built on `URLSession`
-- Supports local Neo4j instances and [Neo4j Aura](https://neo4j.com/cloud/platform/aura-graph-database/) (cloud)
+- Supports local Neo4j instances and [Aura](https://neo4j.com/cloud/platform/aura-graph-database/) (cloud)
 - Typed response values: `String`, `Integer`, `Float`, `Boolean`, `Date`, `Node`, `List`, `Map`
 - Typed JSON responses via `application/vnd.neo4j.query` — no ambiguous types
 - Parameterized queries to prevent Cypher injection and improve query plan caching
-- Credentials loaded from environment variables or `.env` files via [swift-configuration](https://github.com/apple/swift-configuration)
+- Automatic reconnection and query retry on transient failures
 
 ---
 
@@ -46,7 +45,7 @@ dependencies: [
 Then add `SwiftCypher` to your target's dependencies:
 
 ```swift
-    .product(name: "SwiftCypher", package: "SwiftCypher"),
+.product(name: "SwiftCypher", package: "SwiftCypher"),
 ```
 
 Or via Xcode: **File → Add Package Dependencies** and paste the repository URL.
@@ -62,7 +61,7 @@ let client = try await SwiftCypherClient.connect(password: "yourpassword")
 let request = QueryRequest(statement: "MATCH (n:Person) RETURN n.name")
 let response = try await client.runQuery(request: request)
 
-for row in response.rows {
+for row in response {
     print(row["n.name"]?.stringValue ?? "")
 }
 ```
@@ -71,11 +70,11 @@ for row in response.rows {
 
 ## Connecting to Neo4j
 
-Credentials should be read from environment variables or a `.env` file — never hardcoded.
+`SwiftCypherClient.connect(...)` creates a verified client. Before returning, it pings Neo4j and retries up to 10 times with 1-second intervals — useful when starting alongside a Neo4j container. Call `ping()` on an existing client to re-check the connection at any time.
 
-Use `SwiftCypherClient.connect(...)` to create a client. It verifies the connection is live before returning, retrying up to 10 times with 1-second intervals — useful when starting alongside a Neo4j container. Call `ping()` on an existing client to re-check the connection at any time.
+> **Credentials** — pass `username` and `password` as plain strings. Never hardcode them; read them from environment variables or a `.env` file using [swift-configuration](https://github.com/apple/swift-configuration), which ships as a transitive dependency of SwiftCypher.
 
-### Local instance (default)
+### Local instance (default database)
 
 ```swift
 let client = try await SwiftCypherClient.connect(username: username, password: password)
@@ -103,23 +102,26 @@ let client = try await SwiftCypherClient.connect(
 // → https://<db>.databases.neo4j.io/db/<db>/query/v2
 ```
 
-### `.env` file
+### Service endpoints
 
-```
-# Local
-USERNAME=neo4j
-PASSWORD=yourpassword
-
-# Aura
-AURA_DATABASE=your-aura-instance-id
-AURA_USERNAME=neo4j
-AURA_PASSWORD=your-aura-password
-```
-
-| Service | URL |
-|---------|-----|
+| Case | URL |
+|------|-----|
 | `.localhost(database:)` | `http://localhost:7474/db/{database}/query/v2` |
 | `.aura(database:)` | `https://{database}.databases.neo4j.io/db/{database}/query/v2` |
+
+### Example `.env` file
+
+```
+# Local Neo4j
+USERNAME=neo4j
+PASSWORD=yourpassword
+# DATABASE=neo4j  ← optional; defaults to "neo4j"
+
+# Neo4j Aura
+AURA_DATABASE=<instance-id>   # found in the Aura connection URI
+AURA_USERNAME=neo4j
+AURA_PASSWORD=<your-aura-password>
+```
 
 ---
 
@@ -193,17 +195,17 @@ let dateString = node.properties["start_date"]?.dateValue  // "2026-02-01"
 
 ## Working with Results
 
-`QueryResponse` exposes:
+`QueryResponse` conforms to `Sequence` and yields `[String: Neo4jValue]` rows, so you can iterate it directly or use `.rows` explicitly:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `rows` | `[[String: Neo4jValue]]` | Results keyed by field name |
+| `rows` | `[[String: Neo4jValue]]` | Results keyed by field name from the `RETURN` clause |
 | `fields` | `[String]` | Column names from the `RETURN` clause |
 | `bookmarks` | `[String]` | Opaque tokens for causal consistency chaining |
 | `counters` | `QueryCounters?` | Write statistics (nodes/relationships created or deleted, properties set, labels added/removed) |
 
 ```swift
-for row in response.rows {
+for row in response {
     let name   = row["n.name"]?.stringValue    // String?
     let age    = row["n.age"]?.intValue        // Int?
     let score  = row["n.score"]?.doubleValue   // Double?
@@ -274,7 +276,7 @@ Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.
 
 ## Error Handling
 
-`runQuery` throws `SwiftCypherError` on failure:
+`runQuery` throws `SwiftCypherError` on failure. Non-4xx errors trigger an automatic reconnect and one retry before the error is surfaced.
 
 | Error | Cause |
 |-------|-------|
@@ -283,8 +285,8 @@ Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.
 | `.invalidHTTPResponse` | Non-HTTP response received |
 | `.unsuccessfulRequest` | Server returned a non-202, non-4xx status |
 | `.jsonDecodingError` | Response body could not be decoded |
-| `.missingCredentials` | Required credentials not found in environment |
-| `.missingDatabaseName(key:)` | Required database key not found in environment |
+| `.missingCredentials` | Credentials not found (for use with `ConfigReader` integration) |
+| `.missingDatabaseName(key:)` | Database name not found under the given environment key |
 
 ---
 
