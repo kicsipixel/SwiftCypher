@@ -39,7 +39,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.2.0")
+    .package(url: "https://github.com/kicsipixel/SwiftCypher", from: "0.4.1")
 ]
 ```
 
@@ -164,15 +164,15 @@ let request = QueryRequest(
 
 ### Dates
 
-Pass dates as `.date("yyyy-MM-dd")` and wrap with `date()` in the Cypher statement:
+Pass dates as `.date("yyyy-MM-dd")`. This sends a typed Neo4j `Date` value — no `date()` wrapper is needed in the Cypher statement:
 
 ```swift
 let request = QueryRequest(
     statement: """
         CREATE (e:Event {
             name: $name,
-            start_date: date($startDate),
-            end_date: date($endDate)
+            start_date: $startDate,
+            end_date: $endDate
         })
         """,
     parameters: [
@@ -181,6 +181,12 @@ let request = QueryRequest(
         "endDate": .date("2026-02-03"),
     ]
 )
+```
+
+Reading a `Date` property back from a node uses `.dateValue`, which returns the ISO 8601 string:
+
+```swift
+let dateString = node.properties["start_date"]?.dateValue  // "2026-02-01"
 ```
 
 ---
@@ -250,7 +256,7 @@ let request = QueryRequest(
 
 ## Data Types
 
-Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.query.v1.1`), which preserves type information for every value.
+Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.query`), which preserves type information for every value.
 
 | Cypher Type | `Neo4jValue` case | Accessor |
 |-------------|-------------------|----------|
@@ -272,9 +278,10 @@ Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.
 
 | Error | Cause |
 |-------|-------|
+| `.clientError(statusCode:)` | Neo4j returned a 4xx — bad query, auth failure, etc. |
 | `.invalidURL` | Malformed host URL |
 | `.invalidHTTPResponse` | Non-HTTP response received |
-| `.unsuccessfulRequest` | Server returned non-202 status |
+| `.unsuccessfulRequest` | Server returned a non-202, non-4xx status |
 | `.jsonDecodingError` | Response body could not be decoded |
 | `.missingCredentials` | Required credentials not found in environment |
 | `.missingDatabaseName(key:)` | Required database key not found in environment |
