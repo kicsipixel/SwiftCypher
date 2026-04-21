@@ -84,9 +84,16 @@ public struct SwiftCypherClient: Sendable {
   public func runQuery(request: QueryRequest) async throws -> QueryResponse {
     do {
       return try await _runQuery(request: request)
+    } catch SwiftCypherError.clientError(400) {
+      // Stale keep-alive connection — flush pool and retry once
+      logger.warning("Query returned 400, resetting connection and retrying...")
+      await URLSession.shared.reset()
+      return try await _runQuery(request: request)
     } catch SwiftCypherError.clientError(let statusCode) {
+      // Real 4xx (401, 403…) — don't retry
       throw SwiftCypherError.clientError(statusCode: statusCode)
     } catch {
+      // Network/server error — full reconnect with backoff
       logger.warning("Query failed, waiting for Neo4j to recover...")
       try await reconnect()
       logger.info("Reconnected, retrying query...")

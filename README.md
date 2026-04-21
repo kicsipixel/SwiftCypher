@@ -2,7 +2,7 @@
 
 A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.com/docs/query-api/current/) (v2). Execute Cypher queries over HTTPS from any Swift platform — iOS, macOS, or Linux — with no Bolt driver required.
 
-![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)
+![Swift 6.3](https://img.shields.io/badge/Swift-6.3-orange.svg)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-blue.svg)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-blue.svg)
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -15,7 +15,7 @@ A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.co
 - Async/await API built on `URLSession`
 - Supports local Neo4j instances and [Neo4j Aura](https://neo4j.com/cloud/platform/aura-graph-database/) (cloud)
 - Typed response values: `String`, `Integer`, `Float`, `Boolean`, `Date`, `Node`, `List`, `Map`
-- Typed JSON responses via `application/vnd.neo4j.query.v1.1` — no ambiguous types
+- Typed JSON responses via `application/vnd.neo4j.query` — no ambiguous types
 - Parameterized queries to prevent Cypher injection and improve query plan caching
 - Credentials loaded from environment variables or `.env` files via [swift-configuration](https://github.com/apple/swift-configuration)
 
@@ -29,7 +29,7 @@ A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.co
 | iOS      | 18.0+   |
 
 - **Neo4j:** 5.19+ (Query API v2)
-- **Swift:** 6.0+
+- **Swift:** 6.3+
 
 ---
 
@@ -111,9 +111,9 @@ USERNAME=neo4j
 PASSWORD=yourpassword
 
 # Aura
-NEO4J_DATABASE=your-aura-instance-id
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your-aura-password
+AURA_DATABASE=your-aura-instance-id
+AURA_USERNAME=neo4j
+AURA_PASSWORD=your-aura-password
 ```
 
 | Service | URL |

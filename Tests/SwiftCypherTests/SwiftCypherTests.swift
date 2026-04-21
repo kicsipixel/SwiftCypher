@@ -82,11 +82,11 @@ struct SwiftCypherTests {
   // Test cannot be run from Xcode as it uses environment variables.
   @Test("Client connects to Aura/remote database, creates a node with a label.")
   func remoteDBConnectionTest() async throws {
-    guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
-      throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
+    guard let db = reader.string(forKey: "AURA_DATABASE") else {
+      throw SwiftCypherError.missingDatabaseName(key: "AURA_DATABASE")
     }
-    guard let username = reader.string(forKey: "NEO4J_USERNAME"),
-      let password = reader.string(forKey: "NEO4J_PASSWORD")
+    guard let username = reader.string(forKey: "AURA_USERNAME"),
+      let password = reader.string(forKey: "AURA_PASSWORD")
     else {
       throw SwiftCypherError.missingCredentials
     }
@@ -103,11 +103,11 @@ struct SwiftCypherTests {
   // Test cannot be run from Xcode as it uses environment variables.
   @Test("Client connects to Aura/remote database, creates a node with different labels.")
   func remoteDBComplexQuery() async throws {
-    guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
-      throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
+    guard let db = reader.string(forKey: "AURA_DATABASE") else {
+      throw SwiftCypherError.missingDatabaseName(key: "AURA_DATABASE")
     }
-    guard let username = reader.string(forKey: "NEO4J_USERNAME"),
-      let password = reader.string(forKey: "NEO4J_PASSWORD")
+    guard let username = reader.string(forKey: "AURA_USERNAME"),
+      let password = reader.string(forKey: "AURA_PASSWORD")
     else {
       throw SwiftCypherError.missingCredentials
     }
@@ -137,11 +137,11 @@ struct SwiftCypherTests {
   // Test cannot be run from Xcode as it uses environment variables.
   @Test("Client connects to Aura/remote database, creates a relationship.")
   func remoteDBRelationship() async throws {
-    guard let db = reader.string(forKey: "NEO4J_DATABASE") else {
-      throw SwiftCypherError.missingDatabaseName(key: "NEO4J_DATABASE")
+    guard let db = reader.string(forKey: "AURA_DATABASE") else {
+      throw SwiftCypherError.missingDatabaseName(key: "AURA_DATABASE")
     }
-    guard let username = reader.string(forKey: "NEO4J_USERNAME"),
-      let password = reader.string(forKey: "NEO4J_PASSWORD")
+    guard let username = reader.string(forKey: "AURA_USERNAME"),
+      let password = reader.string(forKey: "AURA_PASSWORD")
     else {
       throw SwiftCypherError.missingCredentials
     }
