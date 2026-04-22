@@ -1,11 +1,10 @@
 # SwiftCypher
-
-A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.com/docs/query-api/current/) (v2). Execute Cypher queries over HTTPS from any Swift platform — iOS, macOS, or Linux — with no Bolt driver required.
-
 ![Swift 6.3](https://img.shields.io/badge/Swift-6.3-orange.svg)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-blue.svg)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-blue.svg)
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
+
+A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.com/docs/query-api/current/) (v2). Execute Cypher queries over HTTPS from any Swift platform — iOS, macOS, or Linux — with no Bolt driver required.
 
 ---
 
