@@ -13,6 +13,7 @@ A lightweight, idiomatic Swift client for the [Neo4j Query API](https://neo4j.co
 
 - Async/await API built on `URLSession`
 - Supports local Neo4j instances and [Aura](https://neo4j.com/cloud/platform/aura-graph-database/) (cloud)
+- Basic and Bearer token authentication
 - Typed response values: `String`, `Integer`, `Float`, `Boolean`, `Date`, `Node`, `List`, `Map`
 - Typed JSON responses via `application/vnd.neo4j.query` — no ambiguous types
 - Parameterized queries to prevent Cypher injection and improve query plan caching
@@ -57,7 +58,9 @@ Or via Xcode: **File → Add Package Dependencies** and paste the repository URL
 ```swift
 import SwiftCypher
 
-let client = try await SwiftCypherClient.connect(password: "yourpassword")
+let client = try await SwiftCypherClient.connect(
+    credential: .basic(username: "neo4j", password: "yourpassword")
+)
 let request = QueryRequest(statement: "MATCH (n:Person) RETURN n.name")
 let response = try await client.runQuery(request: request)
 
@@ -72,12 +75,35 @@ for row in response {
 
 `SwiftCypherClient.connect(...)` creates a verified client. Before returning, it pings Neo4j and retries up to 10 times with 1-second intervals — useful when starting alongside a Neo4j container. Call `ping()` on an existing client to re-check the connection at any time.
 
-> **Credentials** — pass `username` and `password` as plain strings. Never hardcode them; read them from environment variables or a `.env` file using [swift-configuration](https://github.com/apple/swift-configuration), which ships as a transitive dependency of SwiftCypher.
+### Authentication
+
+SwiftCypher supports two authentication methods via the `Credential` type:
+
+**Basic auth** (username + password) — works with any Neo4j instance out of the box:
+
+```swift
+let client = try await SwiftCypherClient.connect(
+    credential: .basic(username: username, password: password)
+)
+```
+
+**Bearer token** — for Neo4j instances configured with an SSO/OIDC provider (Okta, Microsoft Entra ID, Google). Your application obtains the JWT from the identity provider and passes it here:
+
+```swift
+let client = try await SwiftCypherClient.connect(
+    service: .aura(database: db),
+    credential: .bearer(token: jwtToken)
+)
+```
+
+> Never hardcode credentials. Read them from environment variables or a `.env` file using [swift-configuration](https://github.com/apple/swift-configuration), which ships as a transitive dependency of SwiftCypher.
 
 ### Local instance (default database)
 
 ```swift
-let client = try await SwiftCypherClient.connect(username: username, password: password)
+let client = try await SwiftCypherClient.connect(
+    credential: .basic(username: username, password: password)
+)
 // → http://localhost:7474/db/neo4j/query/v2
 ```
 
@@ -86,8 +112,7 @@ let client = try await SwiftCypherClient.connect(username: username, password: p
 ```swift
 let client = try await SwiftCypherClient.connect(
     service: .localhost(database: "mydb"),
-    username: username,
-    password: password
+    credential: .basic(username: username, password: password)
 )
 ```
 
@@ -96,8 +121,7 @@ let client = try await SwiftCypherClient.connect(
 ```swift
 let client = try await SwiftCypherClient.connect(
     service: .aura(database: db),
-    username: username,
-    password: password
+    credential: .basic(username: username, password: password)
 )
 // → https://<db>.databases.neo4j.io/db/<db>/query/v2
 ```
