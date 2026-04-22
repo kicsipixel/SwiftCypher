@@ -21,14 +21,12 @@ import Logging
 
 public struct SwiftCypherClient: Sendable {
   let hostURL: String
-  let username: String
-  let password: String
+  let credential: Credential
   let logger: Logger
 
-  private init(service: Service = .localhost(), username: String = "neo4j", password: String, logger: Logger = Logger(label: "SwiftCypherClient")) {
+  private init(service: Service = .localhost(), credential: Credential, logger: Logger = Logger(label: "SwiftCypherClient")) {
     self.hostURL = service.url
-    self.username = username
-    self.password = password
+    self.credential = credential
     self.logger = logger
   }
 
@@ -39,11 +37,10 @@ public struct SwiftCypherClient: Sendable {
   /// ```
   public static func connect(
     service: Service = .localhost(),
-    username: String = "neo4j",
-    password: String,
+    credential: Credential,
     logger: Logger = Logger(label: "SwiftCypherClient")
   ) async throws -> SwiftCypherClient {
-    let client = SwiftCypherClient(service: service, username: username, password: password, logger: logger)
+    let client = SwiftCypherClient(service: service, credential: credential, logger: logger)
     var attempts = 0
     while true {
       do {
@@ -58,9 +55,18 @@ public struct SwiftCypherClient: Sendable {
           throw error
         }
         logger.warning("Neo4j not ready, retrying (\(attempts)/10)...")
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .seconds(1.5))
       }
     }
+  }
+
+  public static func connect(
+    service: Service = .localhost(),
+    username: String = "neo4j",
+    password: String,
+    logger: Logger = Logger(label: "SwiftCypherClient")
+  ) async throws -> SwiftCypherClient {
+    try await connect(service: service, credential: .basic(username: username, password: password), logger: logger)
   }
 
   // MARK: - ping
@@ -112,7 +118,7 @@ public struct SwiftCypherClient: Sendable {
           throw error
         }
         logger.warning("Neo4j not responding, retrying (\(attempts)/10)...")
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .seconds(1.5))
       }
     }
   }
@@ -128,8 +134,13 @@ public struct SwiftCypherClient: Sendable {
     urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Content-Type")
     urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Accept")
     urlRequest.setValue("close", forHTTPHeaderField: "Connection")
-    let credentials = "\(username):\(password)".data(using: .utf8)!.base64EncodedString()
-    urlRequest.addValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
+    switch credential {
+    case .basic(let username, let password):
+      let encoded = "\(username):\(password)".data(using: .utf8)!.base64EncodedString()
+      urlRequest.addValue("Basic \(encoded)", forHTTPHeaderField: "Authorization")
+    case .bearer(let token):
+      urlRequest.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
 
     urlRequest.httpBody = try JSONEncoder().encode(request)
     let (data, response) = try await URLSession.shared.data(for: urlRequest)

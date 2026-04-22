@@ -34,7 +34,7 @@ extension SwiftCypherError: LocalizedError {
     case .jsonDecodingError:
       return "JSON decoding error."
     case .missingCredentials:
-      return "Missing credentials. Set the 'USERNAME/NEO4J_USER' and 'PASSWORD/NEO4J_PASSWORD' environment variables."
+      return "Missing credentials."
     case .missingDatabaseName(let key):
       return "Missing database name. Set the '\(key)' environment variable."
     case .clientError(let statusCode):
