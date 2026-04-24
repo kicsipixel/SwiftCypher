@@ -92,11 +92,12 @@ public struct SwiftCypherClient: Sendable {
     do {
       return try await _runQuery(request: request)
     }
-    catch SwiftCypherError.clientError(let statusCode) {
-      throw SwiftCypherError.clientError(statusCode: statusCode)
+    catch SwiftCypherError.clientError(let statusCode, let neo4jCode, let message) {
+      logger.error("Query rejected with \(statusCode)\(neo4jCode.map { " [\($0)]" } ?? "")\(message.map { ": \($0)" } ?? "") — not retrying.")
+      throw SwiftCypherError.clientError(statusCode: statusCode, neo4jCode: neo4jCode, message: message)
     }
     catch {
-      logger.warning("Query failed, waiting for Neo4j to recover...")
+      logger.warning("Query failed (\(error)) — waiting for Neo4j to recover...")
       try await reconnect()
       logger.info("Reconnected, retrying query...")
       return try await _runQuery(request: request)
@@ -131,7 +132,7 @@ public struct SwiftCypherClient: Sendable {
 
     var urlRequest = URLRequest(url: url)
     urlRequest.httpMethod = "POST"
-    urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Content-Type")
+    urlRequest.setValue("application/vnd.neo4j.query.v1.1", forHTTPHeaderField: "Content-Type")
     urlRequest.setValue("application/vnd.neo4j.query", forHTTPHeaderField: "Accept")
     urlRequest.setValue("close", forHTTPHeaderField: "Connection")
     switch credential {
@@ -151,10 +152,11 @@ public struct SwiftCypherClient: Sendable {
 
     // `202: Accepted`
     if httpResponse.statusCode != 202 {
-      let body = String(data: data, encoding: .utf8) ?? "<non-UTF8 body>"
-      logger.error("Unexpected status code: \(httpResponse.statusCode), body: \(body)")
+      let neo4jCode = (try? JSONDecoder().decode(Neo4jErrorResponse.self, from: data))?.errors.first?.code
+      let neo4jMessage = (try? JSONDecoder().decode(Neo4jErrorResponse.self, from: data))?.errors.first?.message
+      logger.error("Unexpected status \(httpResponse.statusCode)\(neo4jCode.map { " [\($0)]" } ?? "")\(neo4jMessage.map { ": \($0)" } ?? "")")
       if (400..<500).contains(httpResponse.statusCode) {
-        throw SwiftCypherError.clientError(statusCode: httpResponse.statusCode)
+        throw SwiftCypherError.clientError(statusCode: httpResponse.statusCode, neo4jCode: neo4jCode, message: neo4jMessage)
       }
       throw SwiftCypherError.unsuccessfulRequest
     }
@@ -167,4 +169,12 @@ public struct SwiftCypherClient: Sendable {
       throw SwiftCypherError.jsonDecodingError
     }
   }
+}
+
+private struct Neo4jErrorResponse: Decodable {
+  struct Neo4jError: Decodable {
+    let code: String
+    let message: String
+  }
+  let errors: [Neo4jError]
 }

@@ -18,6 +18,7 @@ public struct QueryRequest: Encodable {
   public let statement: String
   public let parameters: [String: Neo4jValue]?
   public let includeCounters: Bool
+  public let impersonatedUser: String?
 
   /// Creates a new Cypher query request.
   ///
@@ -25,6 +26,7 @@ public struct QueryRequest: Encodable {
   ///   - statement: The Cypher query string to execute, optionally referencing parameters with `$name` syntax.
   ///   - parameters: A dictionary of named parameters to bind into the query. Defaults to `nil`.
   ///   - includeCounters: Default is `true`, the response includes update statistics (nodes created, properties set, etc.).
+  ///   - impersonatedUser: When set, the query executes within the security context of this user. Requires the authenticated user to have impersonation privileges. Enterprise/Aura only.
   ///
   /// Example:
   /// ```swift
@@ -33,10 +35,11 @@ public struct QueryRequest: Encodable {
   ///   parameters: ["name": .string("Alice"), "age": .int(30)]
   /// )
   /// ```
-  public init(statement: String, parameters: [String: Neo4jValue]? = nil, includeCounters: Bool = true) {
+  public init(statement: String, parameters: [String: Neo4jValue]? = nil, includeCounters: Bool = true, impersonatedUser: String? = nil) {
     self.statement = statement
     self.parameters = parameters
     self.includeCounters = includeCounters
+    self.impersonatedUser = impersonatedUser
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -48,9 +51,12 @@ public struct QueryRequest: Encodable {
     if includeCounters {
       try container.encode(true, forKey: .includeCounters)
     }
+    if let impersonatedUser {
+      try container.encode(impersonatedUser, forKey: .impersonatedUser)
+    }
   }
 
   private enum CodingKeys: String, CodingKey {
-    case statement, parameters, includeCounters
+    case statement, parameters, includeCounters, impersonatedUser
   }
 }

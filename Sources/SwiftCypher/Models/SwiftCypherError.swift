@@ -20,7 +20,7 @@ public enum SwiftCypherError: Error {
   case jsonDecodingError
   case missingCredentials
   case missingDatabaseName(key: String)
-  case clientError(statusCode: Int)
+  case clientError(statusCode: Int, neo4jCode: String?, message: String?)
   case unsuccessfulRequest
 }
 
@@ -37,8 +37,11 @@ extension SwiftCypherError: LocalizedError {
       return "Missing credentials."
     case .missingDatabaseName(let key):
       return "Missing database name. Set the '\(key)' environment variable."
-    case .clientError(let statusCode):
-      return "Client error: \(statusCode)."
+    case .clientError(let statusCode, let neo4jCode, let message):
+      var description = "Client error: \(statusCode)."
+      if let neo4jCode { description += " [\(neo4jCode)]" }
+      if let message { description += " \(message)" }
+      return description
     case .unsuccessfulRequest:
       return "Unsuccessful request."
     }

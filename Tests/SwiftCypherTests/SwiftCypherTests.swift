@@ -97,4 +97,29 @@ struct SwiftCypherTests {
     #expect(node?.properties["person_id"]?.stringValue == personId)
     #expect(node?.properties["created_at"]?.dateValue == "2026-04-22")
   }
+
+  @Test("Read-only impersonated user cannot write.")
+  func impersonatedReadOnlyUserWriteTest() async throws {
+    guard let username = reader.string(forKey: "USERNAME"),
+      let password = reader.string(forKey: "PASSWORD")
+    else { throw SwiftCypherError.missingCredentials }
+
+    let database = reader.string(forKey: "DATABASE") ?? "neo4j"
+
+    let client = try await SwiftCypherClient.connect(
+      service: .localhost(database: database),
+      username: username,
+      password: password
+    )
+
+    await #expect(throws: SwiftCypherError.self) {
+      _ = try await client.runQuery(
+        request: QueryRequest(
+          statement: "CREATE (n:Person {name: $name})",
+          parameters: ["name": .string("ShouldFail")],
+          impersonatedUser: "szabolcs"
+        )
+      )
+    }
+  }
 }

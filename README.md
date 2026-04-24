@@ -297,13 +297,36 @@ Responses are decoded using the Neo4j typed JSON format (`application/vnd.neo4j.
 
 ---
 
+## Run Queries as a Different User
+
+SwiftCypher supports Neo4j impersonation — executing a query within the security context of a different user while authenticating as an admin. This is useful for enforcing fine-grained access control without managing separate connections per user.
+
+> **Requirements:** Neo4j Enterprise. The authenticated user must have `GRANT IMPERSONATE` privilege. Not available on Community Edition.
+
+### Usage
+
+Pass `impersonatedUser` to `QueryRequest`. The client still authenticates as your admin, but the query runs as the specified user:
+
+```swift
+// Runs as "alice" — read-only, cannot write
+let request = QueryRequest(
+    statement: "MATCH (n:Person) RETURN n.name",
+    impersonatedUser: "alice"
+)
+let response = try await client.runQuery(request: request)
+```
+
+If the impersonated user lacks permission for the operation, Neo4j returns a `400` with `Neo.ClientError.Security.Forbidden` and a description of what was denied. SwiftCypher surfaces this as `SwiftCypherError.clientError` with the `neo4jCode` and `message` fields populated.
+
+---
+
 ## Error Handling
 
 `runQuery` throws `SwiftCypherError` on failure. Non-4xx errors trigger an automatic reconnect and one retry before the error is surfaced.
 
 | Error | Cause |
 |-------|-------|
-| `.clientError(statusCode:)` | Neo4j returned a 4xx — bad query, auth failure, etc. |
+| `.clientError(statusCode:neo4jCode:message:)` | Neo4j returned a 4xx — includes the Neo4j error code and message when available |
 | `.invalidURL` | Malformed host URL |
 | `.invalidHTTPResponse` | Non-HTTP response received |
 | `.unsuccessfulRequest` | Server returned a non-202, non-4xx status |
